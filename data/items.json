@@ -1,0 +1,86 @@
+{
+	"max_level": 3,
+	"order": ["hero", "rocket", "dora", "immortal", "virus", "armor", "tire", "powder"],
+	"items": {
+		"hero": {
+			"name": "祖国人体验卡",
+			"short": "真实伤害",
+			"negative": false,
+			"levels": [
+				{"dmg": 45, "line": "激光眼 45 点真实伤害，无视免伤与护甲"},
+				{"dmg": 65, "line": "激光眼 65 点真实伤害，无视免伤与护甲"},
+				{"dmg": 90, "line": "激光眼 90 点真实伤害，无视免伤与护甲"}
+			]
+		},
+		"rocket": {
+			"name": "火箭筒",
+			"short": "高伤反噬",
+			"negative": false,
+			"levels": [
+				{"dmg": 35, "self": 5, "line": "对对手 35 伤害，自身反噬 5"},
+				{"dmg": 50, "self": 8, "line": "对对手 50 伤害，自身反噬 8"},
+				{"dmg": 70, "self": 10, "line": "对对手 70 伤害，自身反噬 10"}
+			]
+		},
+		"dora": {
+			"name": "哆啦A梦",
+			"short": "跳过回合",
+			"negative": false,
+			"levels": [
+				{"skip": 1, "line": "缩小灯：对手跳过 1 个回合"},
+				{"skip": 1, "line": "缩小灯：对手跳过 1 个回合，持续时间更长"},
+				{"skip": 2, "line": "缩小灯：对手跳过 2 个回合"}
+			]
+		},
+		"immortal": {
+			"name": "大罗金仙体验卡",
+			"short": "免伤+双倍",
+			"negative": false,
+			"levels": [
+				{"immune": 1, "mult": 2, "heal": 0, "line": "免伤 1 回合，且下次伤害 ×2"},
+				{"immune": 2, "mult": 2, "heal": 0, "line": "免伤 2 回合，且下次伤害 ×2"},
+				{"immune": 2, "mult": 2, "heal": 15, "line": "免伤 2 回合，下次伤害 ×2，并回复 15 HP"}
+			]
+		},
+		"virus": {
+			"name": "丧尸病毒",
+			"short": "持续中毒",
+			"negative": false,
+			"levels": [
+				{"dmg": 8, "turns": 3, "line": "对手每回合开始 -8 HP，持续 3 回合"},
+				{"dmg": 10, "turns": 3, "line": "对手每回合开始 -10 HP，持续 3 回合"},
+				{"dmg": 12, "turns": 4, "line": "对手每回合开始 -12 HP，持续 4 回合"}
+			]
+		},
+		"armor": {
+			"name": "防弹衣",
+			"short": "抵挡伤害",
+			"negative": false,
+			"levels": [
+				{"charges": 1, "reflect": 0, "line": "抵挡接下来 1 次伤害"},
+				{"charges": 1, "reflect": 10, "line": "抵挡 1 次伤害，并反弹 10 点给对手"},
+				{"charges": 2, "reflect": 0, "line": "抵挡接下来 2 次伤害"}
+			]
+		},
+		"tire": {
+			"name": "漏气的轮胎",
+			"short": "无法转盘",
+			"negative": true,
+			"levels": [
+				{"turns": 1, "line": "下 1 个回合无法转动转盘"},
+				{"turns": 2, "line": "接下来 2 个回合无法转动转盘"},
+				{"turns": 3, "line": "接下来 3 个回合无法转动转盘"}
+			]
+		},
+		"powder": {
+			"name": "劣质火药",
+			"short": "开枪减伤",
+			"negative": true,
+			"levels": [
+				{"factor": 0.5, "line": "下一次开枪伤害减半"},
+				{"factor": 0.4, "line": "下一次开枪伤害只剩 40%"},
+				{"factor": 0.3, "line": "下一次开枪伤害只剩 30%"}
+			]
+		}
+	}
+}

@@ -1,0 +1,259 @@
+{
+	"player_hp": 140,
+	"bosses": [
+		{
+			"id": "zhang",
+			"level": 1,
+			"name": "醉汉老张",
+			"alias": "三杯倒的酒鬼",
+			"hp": 100,
+			"quote": "嗝——小老弟，这破轮盘，老子闭着眼都比你转得准。",
+			"rule": "醉得手抖：转盘里「空」的占比更高（约 42%），可他自己的枪也常卡壳。",
+			"accent": [
+				0.78,
+				0.53,
+				0.22
+			],
+			"look": {
+				"skin": [
+					0.8,
+					0.62,
+					0.46
+				],
+				"hair": "messy",
+				"hair_color": [
+					0.22,
+					0.18,
+					0.14
+				],
+				"coat": [
+					0.3,
+					0.25,
+					0.18
+				],
+				"prop": "bottle"
+			},
+			"wheel": {
+				"empty": 12,
+				"unknown": 3,
+				"bullet": 7,
+				"shoot": 4,
+				"item": 4,
+				"heal": 3,
+				"curse": 1,
+				"double": 1,
+				"selfhurt": 1,
+				"tire": 0,
+				"powder": 0
+			},
+			"special": {
+				"type": "drunk",
+				"waste": 0.5
+			}
+		},
+		{
+			"id": "dealer",
+			"level": 2,
+			"name": "红发荷官",
+			"alias": "笑里藏刀的女人",
+			"hp": 130,
+			"quote": "别紧张，甜心。我只是……顺手拿走一点东西。",
+			"rule": "每 3 个回合，从你的道具槽偷走 1 件道具，据为己有。",
+			"accent": [
+				0.82,
+				0.24,
+				0.24
+			],
+			"look": {
+				"skin": [
+					0.85,
+					0.68,
+					0.56
+				],
+				"hair": "red_wave",
+				"hair_color": [
+					0.62,
+					0.14,
+					0.09
+				],
+				"coat": [
+					0.18,
+					0.09,
+					0.12
+				],
+				"prop": "cards"
+			},
+			"wheel": {
+				"empty": 11,
+				"unknown": 3,
+				"bullet": 6,
+				"shoot": 4,
+				"item": 6,
+				"heal": 2,
+				"curse": 2,
+				"double": 1,
+				"selfhurt": 1,
+				"tire": 0,
+				"powder": 0
+			},
+			"special": {
+				"type": "steal",
+				"every": 3
+			}
+		},
+		{
+			"id": "mute",
+			"level": 3,
+			"name": "哑巴枪手",
+			"alias": "不说话的枪",
+			"hp": 150,
+			"quote": "……（他指了指自己的喉咙，又指了指你。）",
+			"rule": "他的枪命中你时，追加 5 点流血，持续 3 个回合。",
+			"accent": [
+				0.48,
+				0.56,
+				0.6
+			],
+			"look": {
+				"skin": [
+					0.74,
+					0.58,
+					0.45
+				],
+				"hair": "bandana",
+				"hair_color": [
+					0.14,
+					0.15,
+					0.17
+				],
+				"coat": [
+					0.13,
+					0.15,
+					0.17
+				],
+				"prop": "scarf"
+			},
+			"wheel": {
+				"empty": 11,
+				"unknown": 3,
+				"bullet": 6,
+				"shoot": 5,
+				"item": 4,
+				"heal": 2,
+				"curse": 1,
+				"double": 1,
+				"selfhurt": 1,
+				"tire": 1,
+				"powder": 1
+			},
+			"special": {
+				"type": "bleed",
+				"dmg": 5,
+				"turns": 3
+			}
+		},
+		{
+			"id": "doctor",
+			"level": 4,
+			"name": "疯批医生",
+			"alias": "疯人院主治",
+			"hp": 170,
+			"quote": "别怕，疼只是身体在跟你打招呼。",
+			"rule": "每 3 个回合给自己回复 20 HP，越打越精神。",
+			"accent": [
+				0.52,
+				0.72,
+				0.58
+			],
+			"look": {
+				"skin": [
+					0.82,
+					0.7,
+					0.62
+				],
+				"hair": "wild",
+				"hair_color": [
+					0.35,
+					0.33,
+					0.31
+				],
+				"coat": [
+					0.8,
+					0.8,
+					0.76
+				],
+				"prop": "glasses"
+			},
+			"wheel": {
+				"empty": 12,
+				"unknown": 3,
+				"bullet": 5,
+				"shoot": 4,
+				"item": 5,
+				"heal": 2,
+				"curse": 2,
+				"double": 1,
+				"selfhurt": 1,
+				"tire": 1,
+				"powder": 0
+			},
+			"special": {
+				"type": "heal_self",
+				"amount": 20,
+				"every": 3
+			}
+		},
+		{
+			"id": "master",
+			"level": 5,
+			"name": "轮盘之主",
+			"alias": "赌桌的主人",
+			"hp": 175,
+			"quote": "欢迎来到我的桌子。规矩？规矩是我。",
+			"rule": "开局自带 1 件 Lv2 防弹衣；每次转到「空」，他都在笑，并回 2 HP。",
+			"accent": [
+				0.8,
+				0.62,
+				0.26
+			],
+			"look": {
+				"skin": [
+					0.7,
+					0.56,
+					0.46
+				],
+				"hair": "tophat",
+				"hair_color": [
+					0.1,
+					0.09,
+					0.09
+				],
+				"coat": [
+					0.11,
+					0.09,
+					0.1
+				],
+				"prop": "mask"
+			},
+			"wheel": {
+				"empty": 12,
+				"unknown": 4,
+				"bullet": 5,
+				"shoot": 4,
+				"item": 5,
+				"heal": 1,
+				"curse": 2,
+				"double": 1,
+				"selfhurt": 1,
+				"tire": 1,
+				"powder": 0
+			},
+			"special": {
+				"type": "master",
+				"start_item": "armor",
+				"start_lv": 2,
+				"empty_heal": 2
+			}
+		}
+	]
+}

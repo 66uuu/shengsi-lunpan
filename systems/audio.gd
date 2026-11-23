@@ -11,8 +11,10 @@ var _players: Dictionary = {}
 var _tick_pool: Array[AudioStreamPlayer] = []
 var _tick_index := 0
 var _heart: AudioStreamPlayer
+var _music: AudioStreamPlayer
 var _heart_clock := 0.0
 var _tension := 0.0
+var _dice_music := false
 var _enabled := true
 
 
@@ -66,15 +68,16 @@ func _build() -> void:
 
 	# 背景音乐：52 秒循环，低频压迫 + 拍点 + 心跳 + 不协和金属尖啸
 	var bgm := AudioStreamPlayer.new()
-	var bs = load("res://audio/bgm_tense2.wav")
+	var bs = load("res://audio/bgm_shadows.wav")
 	if bs is AudioStreamWAV:
 		bs.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		bs.loop_begin = 0
 		bs.loop_end = bs.get_length() * bs.mix_rate
 	bgm.stream = bs
-	bgm.volume_db = -6.0
+	bgm.volume_db = -13.0
 	bgm.bus = "Music"
 	add_child(bgm)
+	_music = bgm
 	bgm.play()
 
 	_heart = AudioStreamPlayer.new()
@@ -121,8 +124,16 @@ func tick() -> void:
 
 
 # 0.0 安全 → 1.0 濒死；心跳间隔随紧张度缩短
+func set_dice_music(active: bool) -> void:
+	_dice_music = active
+	if _music != null:
+		_music.volume_db = -48.0 if active else lerpf(-13.0, -8.0, _tension)
+
+
 func set_tension(ratio: float) -> void:
 	_tension = clampf(1.0 - ratio / 0.6, 0.0, 1.0)
+	if _music != null:
+		_music.volume_db = -48.0 if _dice_music else lerpf(-13.0, -8.0, _tension)
 
 
 func _process(delta: float) -> void:

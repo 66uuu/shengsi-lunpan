@@ -62,6 +62,9 @@ var wheel_layout: Array = []
 var round_num := 1
 var boss_turns := 0
 var pending_item := ""
+var wager_available := false
+var wager_tell := ""
+var _wager_is_bluff := false
 var log_lines: Array = []
 
 
@@ -97,6 +100,7 @@ func setup(p_boss: Dictionary, p_seed: int = 0, p_player_hp: int = 140) -> void:
 	boss.hp = boss.max_hp
 
 	_build_wheel(p_boss.get("wheel", {}))
+	_prepare_wager(rng.seed, int(p_boss.get("level", 1)))
 
 	var sp: Dictionary = p_boss.get("special", {})
 	if String(sp.get("type", "none")) == "master":
@@ -104,6 +108,35 @@ func setup(p_boss: Dictionary, p_seed: int = 0, p_player_hp: int = 140) -> void:
 			"id": String(sp.get("start_item", "rocket")),
 			"lv": int(sp.get("start_lv", 2)),
 		})
+
+
+func _prepare_wager(seed_value: int, level: int) -> void:
+	# 独立随机流，保留原有转盘概率。
+	var wager_rng := RandomNumberGenerator.new()
+	wager_rng.seed = seed_value ^ 0x7A18451
+	wager_available = true
+	_wager_is_bluff = wager_rng.randf() < clampf(0.35 + level * 0.075, 0.0, 0.75)
+	var suspicious := _wager_is_bluff
+	if wager_rng.randf() < 0.30:
+		suspicious = not suspicious
+	wager_tell = "他移开了视线" if suspicious else "他按住了木牌"
+
+
+func challenge_wager() -> Dictionary:
+	if not wager_available or player.hp <= 0 or boss.hp <= 0:
+		return {}
+	wager_available = false
+	var loser := boss if _wager_is_bluff else player
+	var amount := mini(loser.hp, 18)
+	loser.hp -= amount
+	if _wager_is_bluff:
+		player.damage_dealt += amount
+		player.max_hit = maxi(player.max_hit, amount)
+	var title := "揭穿暗押" if _wager_is_bluff else "对方说了真话"
+	var detail := "%s损失 %d 点生命" % [loser.display_name, amount]
+	note("暗押 · %s · %s" % [title, detail])
+	return {"title": title, "summary": detail, "damage": amount if _wager_is_bluff else 0,
+		"actor_hurt": not _wager_is_bluff}
 
 
 func _build_wheel(weights: Dictionary) -> void:

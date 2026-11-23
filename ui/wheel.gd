@@ -72,6 +72,12 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, r + 20.0, accent.darkened(0.68))
 	draw_circle(Vector2.ZERO, r + 14.0, accent.darkened(0.42))
 	draw_circle(Vector2.ZERO, r + 7.0, Color(0.065, 0.055, 0.045))
+	draw_arc(Vector2.ZERO, r + 23.0, 0, TAU, 144, Color("#a4865d"), 2.0, true)
+	draw_arc(Vector2.ZERO, r + 9.0, 0, TAU, 144, Color("#645040"), 1.5, true)
+	for i in range(12):
+		var bolt := Vector2.from_angle(i * TAU / 12.0) * (r + 17.0)
+		draw_circle(bolt, 3.1, Color("#17151a"), true, -1.0, true)
+		draw_circle(bolt + Vector2(-0.6, -0.6), 1.6, Color("#d2b385"), true, -1.0, true)
 
 	for i in SEGMENTS:
 		var a0: float = -PI / 2.0 + spin_angle + i * seg
@@ -138,7 +144,7 @@ func _draw() -> void:
 		Vector2(c.x + 22.0, ty - 50.0),
 		Vector2(c.x, ty),
 	])
-	draw_colored_polygon(tri, Color(0.62, 0.10, 0.08))
+	draw_colored_polygon(tri, Color("#c34e39"))
 	draw_polyline(PackedVector2Array([tri[0], tri[1], tri[2], tri[0]]),
 		Color(0.92, 0.78, 0.52), 2.0)
 

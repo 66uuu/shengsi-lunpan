@@ -8,6 +8,7 @@ extends Control
 const Items = preload("res://systems/items.gd")
 
 signal spin_pressed
+signal wager_pressed
 signal end_pressed
 signal item_pressed(index)
 signal replace_choice(index)
@@ -16,13 +17,15 @@ signal result_continue
 signal restart_pressed
 signal help_pressed
 signal start_pressed
+signal level_selected(level: int)
+signal title_requested
 
 const COL_TEXT := Color(0.949, 0.910, 0.835)
 const COL_DIM := Color(0.620, 0.580, 0.500)
 const COL_WOOD := Color(0.800, 0.600, 0.250)
 const COL_RED := Color(0.800, 0.240, 0.180)
 const COL_GREEN := Color(0.330, 0.660, 0.400)
-const COL_PANEL := Color(0.055, 0.048, 0.040, 0.93)
+const COL_PANEL := Color(0.045, 0.052, 0.063, 0.94)
 
 const LEGEND := [
 	["empty", "空：什么也没发生，占约 40%"],
@@ -74,6 +77,7 @@ var _item_buttons: Array[Button] = []
 var _log_labels: Array[Label] = []
 var _spin_btn: Button
 var _end_btn: Button
+var _wager_btn: Button
 var _modal: Control
 var game_layer: Control
 
@@ -251,7 +255,7 @@ func _build_boss_panel() -> void:
 
 
 func _build_player_panel() -> void:
-	var p := _panel(game_layer, Rect2(30, 580, 400, 168), COL_PANEL, Color(0.55, 0.42, 0.20, 0.9))
+	var p := _panel(game_layer, Rect2(30, 262, 400, 168), COL_PANEL, Color(0.55, 0.42, 0.20, 0.9))
 	_player_name = _label(p, "李炎（你）", 28, COL_WOOD, Rect2(18, 4, 364, 36))
 	_player_hp_text = _label(p, "", 22, COL_TEXT, Rect2(180, 40, 202, 28), HORIZONTAL_ALIGNMENT_RIGHT)
 	_player_hp_fill = _bar(p, Rect2(18, 72, 364, 22), COL_GREEN)
@@ -270,8 +274,8 @@ func _build_player_panel() -> void:
 
 
 func _build_item_panel() -> void:
-	var p := _panel(game_layer, Rect2(30, 262, 400, 300), COL_PANEL, Color(0.30, 0.24, 0.15, 0.9))
-	_label(p, "道具槽（点击或按 1/2/3 使用）", 22, COL_WOOD, Rect2(16, 2, 368, 28))
+	var p := _panel(game_layer, Rect2(30, 448, 400, 300), COL_PANEL, Color(0.30, 0.24, 0.15, 0.9))
+	_label(p, "道具槽  /  1 · 2 · 3", 22, COL_WOOD, Rect2(16, 2, 368, 28))
 	for i in 3:
 		var b := _button(p, "", Rect2(16, 34 + i * 88, 368, 82), 22, func() -> void: item_pressed.emit(i))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -279,21 +283,25 @@ func _build_item_panel() -> void:
 
 
 func _build_log_panel() -> void:
-	var p := _panel(game_layer, Rect2(1340, 700, 550, 330), Color(0.05, 0.044, 0.037, 0.92), Color(0.26, 0.21, 0.14, 0.85))
-	_label(p, "结算日志（最近 5 条，最新在上）", 22, COL_WOOD, Rect2(18, 4, 514, 30))
+	var p := _panel(game_layer, Rect2(1340, 664, 550, 354), Color(0.05, 0.044, 0.037, 0.92), Color(0.26, 0.21, 0.14, 0.85))
+	_label(p, "对局记录", 22, COL_WOOD, Rect2(18, 4, 514, 30))
 	for i in 5:
-		var l := _label(p, "", 22, COL_TEXT, Rect2(18, 38 + i * 47, 514, 45))
+		var l := _label(p, "", 22, COL_TEXT, Rect2(18, 45 + i * 58, 514, 58))
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		l.clip_text = true
+		l.max_lines_visible = 2
 		_log_labels.append(l)
 
 
 func _build_actions() -> void:
-	_spin_btn = _button(game_layer, "转动转盘\n[空格]", Rect2(1580, 296, 310, 96), 28,
+	_spin_btn = _button(game_layer, "转动转盘\n[空格]", Rect2(1340, 328, 550, 96), 28,
 		func() -> void: spin_pressed.emit())
-	_end_btn = _button(game_layer, "结束回合\n[Enter]", Rect2(1580, 402, 310, 80), 26,
+	_end_btn = _button(game_layer, "结束回合\n[Enter]", Rect2(1340, 436, 550, 80), 26,
 		func() -> void: end_pressed.emit())
+	_wager_btn = _button(game_layer, "", Rect2(1340, 531, 550, 109), 24,
+		func() -> void: wager_pressed.emit())
+	_wager_btn.tooltip_text = "每关一次，可放弃。猜中对手扣 18 点，猜错你扣 18 点。不会消耗转盘次数。"
+	_wager_btn.hide()
 	var tip := _label(game_layer, "空格 转盘 · 1/2/3 道具 · Enter 结束 · F1 说明",
 		22, COL_DIM, Rect2(1340, 1036, 550, 30), HORIZONTAL_ALIGNMENT_CENTER)
 	tip.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
@@ -326,7 +334,7 @@ func update_side(which: String, hp: int, max_hp: int, bullets: int, status: Stri
 	var status_label := _player_status if which == "player" else _boss_status
 	if hp_text == null:
 		return
-	var ratio := clampf(float(hp) / float(max_hp), 0.0, 1.0)
+	var ratio := clampf(float(hp) / float(maxi(max_hp, 1)), 0.0, 1.0)
 	var col := COL_GREEN
 	if ratio <= 0.3:
 		col = COL_RED
@@ -392,6 +400,12 @@ func set_logs(logs: Array) -> void:
 			_log_labels[i].text = ""
 
 
+func set_wager(available: bool, tell: String, can_challenge: bool) -> void:
+	_wager_btn.visible = available
+	_wager_btn.disabled = not can_challenge
+	_wager_btn.text = "他声称木牌下有红印 · %s\n质疑暗押 [Q] · 判错扣 18 生命" % tell
+
+
 func set_actions(can_spin: bool, can_end: bool) -> void:
 	if _spin_btn == null:
 		return
@@ -407,7 +421,7 @@ func _build_modal() -> void:
 	_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 	_modal.visible = false
-	_modal.gui_input.connect(_on_modal_input)
+
 	add_child(_modal)
 
 
@@ -425,6 +439,7 @@ func hide_modal() -> void:
 
 func _clear(node: Node) -> void:
 	for c in node.get_children():
+		node.remove_child(c)
 		c.queue_free()
 
 
@@ -454,26 +469,46 @@ func _modal_panel(rect: Rect2, border: Color) -> Panel:
 
 func show_title(best := 0, clears := 0) -> void:
 	_new_modal("title")
-	var p := _modal_panel(Rect2(480, 170, 960, 760), COL_WOOD)
-	_label(p, "生 死 轮 盘", 112, COL_TEXT, Rect2(40, 26, 880, 130), HORIZONTAL_ALIGNMENT_CENTER)
-	_label(p, "B A R   D U E L   ·   v5", 30, COL_WOOD, Rect2(40, 158, 880, 42), HORIZONTAL_ALIGNMENT_CENTER)
-	_label(p, "五关 · 五个人 · 一把左轮和一张转盘", 26, COL_DIM,
-		Rect2(40, 204, 880, 40), HORIZONTAL_ALIGNMENT_CENTER)
+	var artwork := TextureRect.new()
+	artwork.texture = preload("res://art/bg_den2_clean.png")
+	artwork.size = Vector2(1240, 1080)
+	artwork.position = Vector2(680, 0)
+	artwork.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	artwork.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	artwork.modulate = Color("#ad9b88")
+	artwork.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_modal.add_child(artwork)
 
-	var names := ["第 1 关  醉汉老张", "第 2 关  红发荷官", "第 3 关  哑巴枪手",
-		"第 4 关  疯批医生", "第 5 关  轮盘之主"]
-	for i in names.size():
-		_label(p, names[i], 24, COL_TEXT, Rect2(300, 280 + i * 44, 360, 40))
-	_label(p, "规则：每回合只能转一次；转完可用 1 个道具，再结束回合。",
-		22, COL_DIM, Rect2(60, 520, 840, 34), HORIZONTAL_ALIGNMENT_CENTER)
-	_label(p, "空格 / 点击转盘 = 转动    1/2/3 = 道具    Enter = 结束回合",
-		22, COL_DIM, Rect2(60, 558, 840, 34), HORIZONTAL_ALIGNMENT_CENTER)
+	var shade := ColorRect.new()
+	shade.color = Color(0.017, 0.023, 0.030, 0.22)
+	shade.position = artwork.position
+	shade.size = artwork.size
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_modal.add_child(shade)
 
-	var b := _button(p, "开始对决\n[Enter]", Rect2(310, 618, 340, 96), 30,
+	var medallion := TextureRect.new()
+	medallion.texture = preload("res://art/roulette-medallion.png")
+	medallion.position = Vector2(990, 232)
+	medallion.size = Vector2(640, 640)
+	medallion.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	medallion.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_modal.add_child(medallion)
+
+	var p := _panel(_modal, Rect2(0, 0, 740, 1080), Color("#11171f"), Color("#11171f"), 0)
+	_panel(p, Rect2(736, 0, 4, 1080), COL_WOOD.darkened(0.35), COL_WOOD.darkened(0.35), 0)
+	_panel(p, Rect2(76, 258, 76, 4), COL_WOOD, COL_WOOD, 0)
+	_label(p, "生死轮盘", 104, COL_TEXT, Rect2(72, 280, 620, 140))
+	_label(p, "地下酒馆 · 轮盘与暗骰六关", 32, COL_WOOD, Rect2(80, 443, 570, 50))
+	_label(p, "每回合转一次轮盘，随后可使用一件道具。", 24, COL_DIM,
+		Rect2(80, 520, 600, 40))
+	_button(p, "开始对决  [Enter]", Rect2(80, 628, 380, 82), 30,
 		func() -> void: start_pressed.emit())
+	for i in 6:
+		_button(p, "第 %d 关" % (i + 1), Rect2(80 + (i % 3) * 176, 716 + floori(i / 3.0) * 64, 162, 52), 24,
+			func() -> void: level_selected.emit(i + 1))
 	if best > 0:
-		_label(p, "最佳纪录：通到第 %d 关 · 累计通关 %d 次" % [best, clears], 20, COL_DIM,
-			Rect2(40, 718, 880, 26), HORIZONTAL_ALIGNMENT_CENTER)
+		_label(p, "最高到达第 %d 关 · 完整通关 %d 次" % [best, clears], 22, COL_DIM,
+			Rect2(80, 872, 610, 44))
 
 
 func show_boss_intro(b: Dictionary) -> void:
@@ -552,8 +587,10 @@ func show_game_over(win: bool, lines: Array) -> void:
 		var l := _label(p, String(lines[i]), 28, COL_TEXT, Rect2(70, 140 + i * 56, 700, 52),
 			HORIZONTAL_ALIGNMENT_CENTER)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_button(p, "重新开始\n[Enter]", Rect2(290, 460, 260, 96), 28,
+	_button(p, ("重新开始\n[Enter]" if win else "重试本关\n[Enter]"), Rect2(290, 460, 260, 96), 28,
 		func() -> void: restart_pressed.emit())
+	_button(p, "返回选关", Rect2(572, 468, 186, 80), 24,
+		func() -> void: title_requested.emit())
 
 
 func show_help() -> void:
@@ -585,19 +622,6 @@ func _accent_of(b: Dictionary) -> Color:
 	if arr is Array and arr.size() >= 3:
 		return Color(float(arr[0]), float(arr[1]), float(arr[2]))
 	return COL_WOOD
-
-
-func _on_modal_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		match modal_kind:
-			"title":
-				start_pressed.emit()
-			"intro":
-				intro_continue.emit()
-			"result":
-				result_continue.emit()
-			"over":
-				restart_pressed.emit()
 
 
 func _unhandled_input(event: InputEvent) -> void:

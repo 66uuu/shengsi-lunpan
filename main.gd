@@ -14,13 +14,17 @@ const VignetteScript = preload("res://ui/vignette.gd")
 const AudioScript = preload("res://systems/audio.gd")
 const PauseScript = preload("res://ui/pause_menu.gd")
 const BattleScript = preload("res://systems/battle.gd")
+const DiceDuelScript = preload("res://ui/dice_duel.gd")
 const Items = preload("res://systems/items.gd")
 
-enum Phase { TITLE, BOSS_INTRO, PLAYER_TURN, SPINNING, RESOLVE, ITEM_PHASE, AI_TURN, GAME_OVER }
+enum Phase { TITLE, BOSS_INTRO, PLAYER_TURN, SPINNING, RESOLVE, ITEM_PHASE, AI_TURN, GAME_OVER, DICE_DUEL }
 
 var font: Font
 var ui_theme: Theme
 
+var dice_duel: Control
+var dice_completed := false
+var retry_dice := false
 var world: Control
 var table_view
 var wheel
@@ -65,7 +69,9 @@ func _ready() -> void:
 		return
 
 	_build()
-	if _has_arg("--shot-battle"):
+	if _has_arg("--shot-dice"):
+		_begin_dice_duel()
+	elif _has_arg("--shot-battle"):
 		debug_start_gameplay(0)
 	else:
 		world.visible = false
@@ -152,9 +158,19 @@ func _build() -> void:
 	table_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	table_view.set_font(font)
 
+	var fog := TextureRect.new()
+	fog.texture = preload("res://art/bar-fog.png")
+	fog.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	world.add_child(fog)
+	fog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var haze := fog.create_tween().set_loops()
+	haze.tween_property(fog, "modulate:a", 0.60, 4.8).set_trans(Tween.TRANS_SINE)
+	haze.tween_property(fog, "modulate:a", 1.0, 4.8).set_trans(Tween.TRANS_SINE)
+
 	wheel = WheelScript.new()
 	world.add_child(wheel)
-	wheel.position = Vector2(700, 590)
+	wheel.position = Vector2(700, 534)
 	wheel.size = Vector2(520, 520)
 	wheel.tick.connect(_on_wheel_tick)
 	wheel.spin_requested.connect(_on_spin_pressed)
@@ -172,6 +188,7 @@ func _build() -> void:
 	hud.build(font)
 	hud.set_actions(false, false)
 	hud.spin_pressed.connect(_on_spin_pressed)
+	hud.wager_pressed.connect(_on_wager_pressed)
 	hud.end_pressed.connect(_on_end_pressed)
 	hud.item_pressed.connect(_on_item_pressed)
 	hud.replace_choice.connect(_on_replace_choice)
@@ -180,6 +197,8 @@ func _build() -> void:
 	hud.restart_pressed.connect(_on_restart)
 	hud.help_pressed.connect(_on_help_pressed)
 	hud.start_pressed.connect(_on_start)
+	hud.level_selected.connect(_on_level_selected)
+	hud.title_requested.connect(_return_to_selection)
 
 	vignette = VignetteScript.new()
 	add_child(vignette)
@@ -215,10 +234,35 @@ func _on_start() -> void:
 	_begin_level(0)
 
 
+func _on_level_selected(number: int) -> void:
+	if phase != Phase.TITLE or number < 1 or number > bosses.size() + 1:
+		return
+	hud.hide_modal()
+	total_rounds = 0
+	total_damage = 0
+	total_max_hit = 0
+	if number == 2:
+		level_index = 0
+		dice_completed = false
+		_begin_dice_duel()
+	else:
+		_begin_level(0 if number == 1 else number - 2)
+
+
+func _return_to_selection() -> void:
+	world.hide()
+	bubble.hide()
+	phase = Phase.TITLE
+	hud.show_title(best_level, total_clears)
+
+
 func _begin_level(i: int) -> void:
 	level_index = i
 	world.visible = true
-	var b: Dictionary = bosses[i]
+	bubble.visible = true
+	dice_completed = false if i == 0 else dice_completed
+	var b: Dictionary = bosses[i].duplicate()
+	b["level"] = 1 if i == 0 else i + 2
 	battle = BattleScript.new()
 	battle.setup(b, rng.randi(), player_hp)
 	_boss_low_said = false
@@ -253,10 +297,48 @@ func _on_result_continue() -> void:
 	if phase != Phase.RESOLVE:
 		return
 	hud.hide_modal()
+	if level_index == 0 and not dice_completed:
+		_begin_dice_duel()
+		return
 	if level_index + 1 < bosses.size():
 		_begin_level(level_index + 1)
 	else:
 		_show_victory()
+
+
+func _begin_dice_duel() -> void:
+	retry_dice = false
+	phase = Phase.DICE_DUEL
+	busy = false
+	world.hide()
+	hud.hide()
+	bubble.hide()
+	dice_duel = DiceDuelScript.new()
+	dice_duel.audio = audio
+	add_child(dice_duel)
+	move_child(dice_duel, pause_menu.get_index())
+	dice_duel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dice_duel.finished.connect(_on_dice_finished)
+
+
+func _on_dice_finished(won: bool, rounds: int, jackpot: bool) -> void:
+	dice_duel.queue_free()
+	dice_duel = null
+	hud.show()
+	total_rounds += rounds
+	var lines := ["掷骰轮数：%d" % rounds, "三连六" if jackpot else "六格装满"]
+	if won:
+		dice_completed = true
+		best_level = maxi(best_level, 2)
+		_save_progress()
+		phase = Phase.RESOLVE
+		audio.play("win")
+		hud.show_result("第 2 关 · 通过", lines, Color("#bc8560"))
+	else:
+		phase = Phase.GAME_OVER
+		audio.play("lose")
+		retry_dice = true
+		hud.show_game_over(false, ["倒在第 2 关：暗骰赌桌"] + lines)
 
 
 func _on_restart() -> void:
@@ -266,7 +348,10 @@ func _on_restart() -> void:
 	total_rounds = 0
 	total_damage = 0
 	total_max_hit = 0
-	_begin_level(0)
+	if retry_dice:
+		_begin_dice_duel()
+	else:
+		_begin_level(level_index)
 
 
 func _on_help_pressed() -> void:
@@ -274,7 +359,7 @@ func _on_help_pressed() -> void:
 		hud.hide_modal()
 		_refresh()
 		return
-	if hud.is_modal_open():
+	if hud.is_modal_open() or busy:
 		return
 	hud.show_help()
 
@@ -324,6 +409,20 @@ func _on_spin_pressed() -> void:
 	if battle == null or battle.player.cannot_spin:
 		return
 	_player_spin()
+
+
+func _on_wager_pressed() -> void:
+	if battle == null or hud.is_modal_open() or busy or phase != Phase.PLAYER_TURN:
+		return
+	if battle.player.cannot_spin or not battle.wager_available:
+		return
+	var outcome: Dictionary = battle.challenge_wager()
+	if outcome.is_empty():
+		return
+	_apply_result(outcome, true)
+	if not _check_over():
+		_hint_override = ""
+		_refresh()
 
 
 func _player_spin() -> void:
@@ -644,7 +743,7 @@ func _level_clear() -> void:
 	total_rounds += battle.round_num
 	total_damage += battle.player.damage_dealt
 	total_max_hit = maxi(total_max_hit, battle.player.max_hit)
-	best_level = maxi(best_level, level_index + 1)
+	best_level = maxi(best_level, 1 if level_index == 0 else level_index + 2)
 	total_clears += 1
 	_save_progress()
 
@@ -654,7 +753,7 @@ func _level_clear() -> void:
 		"最高单次伤害：%d" % battle.player.max_hit,
 		"剩余 HP：%d / %d" % [battle.player.hp, battle.player.max_hp],
 	]
-	hud.show_result("第 %d 关 · 通过" % int(bosses[level_index].get("level", 1)), lines,
+	hud.show_result("第 %d 关 · 通过" % int(battle.boss_data.get("level", 1)), lines,
 		_accent_of(bosses[level_index]))
 	_refresh()
 
@@ -666,7 +765,7 @@ func _defeat() -> void:
 	table_view.set_state("laugh", 2.0)
 	audio.play("lose")
 	var lines := [
-		"倒在第 %d 关：%s" % [int(bosses[level_index].get("level", 1)), String(bosses[level_index].get("name", ""))],
+		"倒在第 %d 关：%s" % [int(battle.boss_data.get("level", 1)), String(bosses[level_index].get("name", ""))],
 		"这一关回合数：%d" % battle.round_num,
 		"这一关造成伤害：%d" % battle.player.damage_dealt,
 		"最高单次伤害：%d" % battle.player.max_hit,
@@ -679,7 +778,7 @@ func _show_victory() -> void:
 	phase = Phase.GAME_OVER
 	audio.play("win")
 	var lines := [
-		"你走完了五张桌子。",
+		"你通过了轮盘与暗骰共六关。",
 		"总回合数：%d" % total_rounds,
 		"总造成伤害：%d" % total_damage,
 		"最高单次伤害：%d" % total_max_hit,
@@ -697,6 +796,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if not k.pressed or k.echo:
 		return
+	if phase == Phase.DICE_DUEL:
+		if k.keycode == KEY_SPACE and is_instance_valid(dice_duel):
+			dice_duel.roll()
+			get_viewport().set_input_as_handled()
+		return
 	if k.keycode == KEY_F1:
 		_on_help_pressed()
 		get_viewport().set_input_as_handled()
@@ -704,6 +808,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if hud.is_modal_open():
 		return
 	match k.keycode:
+		KEY_Q:
+			_on_wager_pressed()
 		KEY_SPACE:
 			_on_spin_pressed()
 		KEY_1:
@@ -732,6 +838,9 @@ func _refresh() -> void:
 	hud.set_logs(battle.log_lines)
 	hud.set_actions(phase == Phase.PLAYER_TURN and not busy and not battle.player.cannot_spin,
 		phase == Phase.ITEM_PHASE and not busy)
+
+	hud.set_wager(battle.wager_available, battle.wager_tell,
+		phase == Phase.PLAYER_TURN and not busy and not battle.player.cannot_spin)
 
 	if _hint_override != "":
 		hud.set_hint(_hint_override, battle.player.hp <= int(battle.player.max_hp * 0.25))
@@ -804,7 +913,7 @@ func _accent_of(b: Dictionary) -> Color:
 #  表现工具
 # ------------------------------------------------------------
 func _wait(sec: float) -> void:
-	await get_tree().create_timer(sec).timeout
+	await get_tree().create_timer(sec, false).timeout
 
 
 func _on_wheel_tick() -> void:
